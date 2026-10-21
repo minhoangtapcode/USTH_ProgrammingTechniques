@@ -34,5 +34,6 @@ def standardize(X: np.ndarray) -> np.ndarray:
     of optimization difficulty is created by not doing this.
     """
     mean = X.mean(axis=0)
-    std = X.std(axis=0)
-    return (X - mean) / std
+    scale = X.std(axis=0)
+    scale = np.where(scale == 0, 1, scale)  # avoid division by zero
+    return (X - mean) / scale
