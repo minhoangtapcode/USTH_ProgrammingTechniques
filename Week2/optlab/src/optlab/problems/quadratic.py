@@ -21,11 +21,11 @@ class Quadratic(IObjective, ITwiceDifferentiable):
 
     def value(self, x: Vec) -> float:
         """[DAY 1]"""
-        raise NotImplementedError("[DAY 1] lab 2")
+        return float(0.5 * x @ self.A @ x - self.b @ x)
 
     def gradient(self, x: Vec) -> Vec:
         """[DAY 1] Ax - b."""
-        raise NotImplementedError("[DAY 1] lab 2")
+        return self.A @ x - self.b
 
     def hessian(self, x: Vec) -> Mat:
         """[DAY 4] A, independent of x."""

@@ -38,19 +38,22 @@ class LogisticNLL(IPointwiseLoss):
 
     def _sigmoid(self, z: Vec) -> Vec:
         # Stable computation of sigmoid: 1 / (1 + exp(-z))
-        exp_neg_z = np.exp(-np.abs(z))
+        result = np.empty_like(z, dtype=np.float64)
+        positive = z >= 0
+        result[positive] = 1.0 / (1.0 + np.exp(-z[positive]))
+        exp_z = np.exp(z[~positive])
+        result[~positive] = exp_z / (1.0 + exp_z)
+        return result
 
     def value(self, z: Vec, y: Vec) -> Vec:
-        return _softplus(z) - y * z
+        return self._softplus(z) - y * z
 
     def d1(self, z: Vec, y: Vec) -> Vec:
-        return _sigmoid(z) - y
-        
+        return self._sigmoid(z) - y
 
     def d2(self, z: Vec, y: Vec) -> Vec:
-        s = _sigmoid(z)
+        s = self._sigmoid(z)
         return s * (1.0 - s)
-       
 
 
 class Huber(IPointwiseLoss):

@@ -32,11 +32,14 @@ class GLMLoss(IObjective, ITwiceDifferentiable, IBatchObjective):
 
     def value(self, w: Vec) -> float:
         """[DAY 1] The mean of phi over the samples."""
-        raise NotImplementedError("[DAY 1] lab 2")
+        z = self.X @ w
+        return float(np.mean(self.pointwise.value(z, self.y)))
 
     def gradient(self, w: Vec) -> Vec:
         """[DAY 1] X^T*phi'(Xw, y) / n."""
-        raise NotImplementedError("[DAY 1] lab 2")
+        z: Vec = self.X @ w
+        derivative: Vec = self.pointwise.d1(z, self.y)
+        return self.X.T @ derivative / self.X.shape[0]
 
     def hessian(self, w: Vec) -> Mat:
         """[DAY 4] X^T DX / n with D = diag(phi''(Xw, y)).
@@ -64,9 +67,9 @@ class GLMLoss(IObjective, ITwiceDifferentiable, IBatchObjective):
 
 def linear_regression(X: Mat, y: Vec) -> GLMLoss:
     """[DAY 1] Least-squares regression: the Gaussian MLE."""
-    raise NotImplementedError("[DAY 1] lab 2")
+    return GLMLoss(X, y, SquaredError())
 
 
 def logistic_regression(X: Mat, y: Vec) -> GLMLoss:
     """[DAY 1] Logistic regression: the Bernoulli MLE."""
-    raise NotImplementedError("[DAY 1] lab 2")
+    return GLMLoss(X, y, LogisticNLL())
