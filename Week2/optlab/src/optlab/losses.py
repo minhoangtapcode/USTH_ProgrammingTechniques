@@ -15,13 +15,14 @@ class SquaredError(IPointwiseLoss):
     """[DAY 1] phi(z, y) = 1/2(z - y)^2. The Gaussian negative log-likelihood."""
 
     def value(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        return 0.5 * (z - y) ** 2
+        
 
     def d1(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        return z - y
 
     def d2(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        return np.ones_like(z)
 
 
 class LogisticNLL(IPointwiseLoss):
@@ -31,15 +32,25 @@ class LogisticNLL(IPointwiseLoss):
     computed properly. Use the stable form of softplus. The trap is on the day-1 slide
     and in the tests.
     """
+    def _softplus(self, z: Vec) -> Vec:
+        # Stable computation of softplus: log(1 + exp(z))
+        return np.maximum(0, z) + np.log1p(np.exp(-np.abs(z)))
+
+    def _sigmoid(self, z: Vec) -> Vec:
+        # Stable computation of sigmoid: 1 / (1 + exp(-z))
+        exp_neg_z = np.exp(-np.abs(z))
 
     def value(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        return _softplus(z) - y * z
 
     def d1(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        return _sigmoid(z) - y
+        
 
     def d2(self, z: Vec, y: Vec) -> Vec:
-        raise NotImplementedError("[DAY 1] lab 2")
+        s = _sigmoid(z)
+        return s * (1.0 - s)
+       
 
 
 class Huber(IPointwiseLoss):

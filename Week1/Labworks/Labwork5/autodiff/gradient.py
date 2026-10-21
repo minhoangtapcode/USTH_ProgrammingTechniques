@@ -26,7 +26,17 @@ def gradient_forward(f: Callable[[list[Dual]], Dual], x: Sequence[float]) -> lis
     Hint: one sweep per input variable i, seeding a derivative of 1 on x[i] and 0
     elsewhere. How many sweeps for a function of 1 000 variables?
     """
-    raise NotImplementedError("TODO: gradient_forward")
+    grad: list[float] = []
+
+    for i in range(len(x)):
+        variables = [
+            Dual(float(value), 1.0 if j == i else 0.0)
+            for j, value in enumerate(x)
+        ]
+        result = f(variables)
+        grad.append(result.der)
+
+    return grad
 
 
 def gradient_reverse(f: Callable[[list[Var]], Var], x: Sequence[float]) -> list[float]:
@@ -34,4 +44,7 @@ def gradient_reverse(f: Callable[[list[Var]], Var], x: Sequence[float]) -> list[
 
     Hint: wrap the inputs into Var leaves, evaluate f, call backward, read the grads.
     """
-    raise NotImplementedError("TODO: gradient_reverse")
+    variables = [Var(float(value)) for value in x]
+    result = f(variables)
+    result.backward()
+    return [variable.grad for variable in variables]

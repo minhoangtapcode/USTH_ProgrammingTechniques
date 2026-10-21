@@ -34,48 +34,65 @@ class Dual:
 
     def __radd__(self, other: float) -> Dual:
         """Called for `2 + x` when `x` is a Dual (addition is commutative)."""
-        raise NotImplementedError("TODO: Dual.__radd__")
+        return self + other
 
     def __neg__(self) -> Dual:
-        raise NotImplementedError("TODO: Dual.__neg__")
+        return Dual(-self.val, -self.der)
 
     def __sub__(self, other: Dual | float) -> Dual:
-        raise NotImplementedError("TODO: Dual.__sub__ (hint: reuse + and unary -)")
+        if not isinstance(other, (Dual, int, float)):
+            return NotImplemented 
+        return self + (-Dual.lift(other))        
 
     def __rsub__(self, other: float) -> Dual:
         """Called for `2 - x`: careful, subtraction is NOT commutative."""
-        raise NotImplementedError("TODO: Dual.__rsub__")
+        return Dual.lift(other) - self
 
     def __mul__(self, other: Dual | float) -> Dual:
         """(a + bε)(c + dε) = ac + (ad + bc)ε  - the product rule!"""
-        raise NotImplementedError("TODO: Dual.__mul__")
+        if not isinstance(other, (Dual, int, float)):
+            return NotImplemented
+        
+        o = Dual.lift(other)
+        value = self.val * o.val
+        derivative = self.der * o.val + self.val * o.der
+        return Dual(value, derivative)
 
     def __rmul__(self, other: float) -> Dual:
-        raise NotImplementedError("TODO: Dual.__rmul__")
+        return self * other
 
     def __truediv__(self, other: Dual | float) -> Dual:
         """(u/v)' = (u'v − uv')/v²  - the quotient rule."""
-        raise NotImplementedError("TODO: Dual.__truediv__")
+        if not isinstance(other, (Dual, int, float)):
+            return NotImplemented
+        
+        o = Dual.lift(other)
+        value = self.val / o.val
+        derivative = (self.der * o.val - self.val * o.der) / (o.val ** 2)
+        return Dual(value, derivative)
 
     def __rtruediv__(self, other: float) -> Dual:
-        raise NotImplementedError("TODO: Dual.__rtruediv__")
+        return Dual.lift(other) / self
 
     def __pow__(self, exponent: float) -> Dual:
         """Only a constant (float) exponent: (uᵏ)' = k·uᵏ⁻¹·u'."""
-        raise NotImplementedError("TODO: Dual.__pow__")
+        value = self.val ** exponent
+        derivative = exponent * (self.val ** (exponent - 1)) * self.der
+        return Dual(value, derivative)
 
     # ---- elementary functions (chain rule: (f∘g)' = f'(g)·g') ------------------
     def exp(self) -> Dual:
-        raise NotImplementedError("TODO: Dual.exp")
+        value = math.exp(self.val)
+        return Dual(value, value * self.der)
 
     def log(self) -> Dual:
-        raise NotImplementedError("TODO: Dual.log")
+        return Dual(math.log(self.val), self.der / self.val)
 
     def sin(self) -> Dual:
-        raise NotImplementedError("TODO: Dual.sin")
-
+        return Dual(math.sin(self.val), math.cos(self.val) * self.der)
+    
     def cos(self) -> Dual:
-        raise NotImplementedError("TODO: Dual.cos")
+        return Dual(math.cos(self.val), -math.sin(self.val) * self.der)
 
 
 def derivative(f: Callable[[Dual], Dual | float], x: float) -> float:
@@ -84,4 +101,9 @@ def derivative(f: Callable[[Dual], Dual | float], x: float) -> float:
     Hint: evaluate f at the dual number x + 1·ε. Beware, f may return a plain
     float (a constant function): its derivative is then 0.
     """
-    raise NotImplementedError("TODO: derivative")
+    result = f(Dual(x, 1.0))
+
+    if isinstance(result, Dual):
+        return result.der
+
+    return 0.0

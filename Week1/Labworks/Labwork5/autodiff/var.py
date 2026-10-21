@@ -40,45 +40,63 @@ class Var:
         return Var(self.value + o.value, ((self, 1.0), (o, 1.0)))
 
     def __radd__(self, other: float) -> Var:
-        raise NotImplementedError("TODO: Var.__radd__")
-
+        return self + other
+    
     def __neg__(self) -> Var:
-        raise NotImplementedError("TODO: Var.__neg__")
-
+        return Var(-self.value, ((self, -1.0),))
+    
     def __sub__(self, other: Var | float) -> Var:
-        raise NotImplementedError("TODO: Var.__sub__")
-
+        if not isinstance(other, (Var, int, float)):
+            return NotImplemented
+        return self + (-Var.lift(other))
+    
     def __rsub__(self, other: float) -> Var:
-        raise NotImplementedError("TODO: Var.__rsub__")
+        return Var.lift(other) - self
 
     def __mul__(self, other: Var | float) -> Var:
         """z = x·y: ∂z/∂x = y and ∂z/∂y = x."""
-        raise NotImplementedError("TODO: Var.__mul__")
+        if not isinstance(other, (Var, int, float)):
+            return NotImplemented
+        
+        o = Var.lift(other)
+        return Var(self.value * o.value, ((self, o.value), (o, self.value)),)
 
     def __rmul__(self, other: float) -> Var:
-        raise NotImplementedError("TODO: Var.__rmul__")
+        return self * other
 
     def __truediv__(self, other: Var | float) -> Var:
-        raise NotImplementedError("TODO: Var.__truediv__")
+        if not isinstance(other, (Var, int, float)):
+            return NotImplemented
+
+        o = Var.lift(other)
+        value = self.value / o.value
+        parents = ((self, 1.0 / o.value), (o, -self.value / (o.value ** 2)),)
+        return Var(value, parents)
 
     def __rtruediv__(self, other: float) -> Var:
-        raise NotImplementedError("TODO: Var.__rtruediv__")
+        return Var.lift(other) / self
 
     def __pow__(self, exponent: float) -> Var:
-        raise NotImplementedError("TODO: Var.__pow__ (constant exponent only)")
+        value = self.value ** exponent
+        local_derivative = exponent * (self.value ** (exponent - 1))
+        return Var(value, ((self, local_derivative),))
 
     # ---- elementary functions ----------------------------------------------------
     def exp(self) -> Var:
-        raise NotImplementedError("TODO: Var.exp")
+        value = math.exp(self.value)
+        return Var(value, ((self, value),))
 
     def log(self) -> Var:
-        raise NotImplementedError("TODO: Var.log")
+        return Var(math.log(self.value), ((self, 1.0 / self.value),))
 
     def sin(self) -> Var:
-        raise NotImplementedError("TODO: Var.sin")
+        return Var(math.sin(self.value), ((self, math.cos(self.value)),))
 
     def cos(self) -> Var:
-        raise NotImplementedError("TODO: Var.cos")
+        return Var(
+            math.cos(self.value),
+            ((self, -math.sin(self.value)),),)
+
 
     # ---- backpropagation ---------------------------------------------------------
     def topological_order(self) -> list[Var]:
@@ -88,7 +106,27 @@ class Var:
         stack): a recursive version overflows Python's stack on long graphs.
         Mind nodes reachable by several paths: each must appear only once.
         """
-        raise NotImplementedError("TODO: Var.topological_order")
+        order: list[Var] = []
+        visited: set[Var] = set()
+        stack: list[tuple[Var, bool]] = [(self, False)]
+
+        while stack:
+            node, expanded = stack.pop()
+            
+            if expanded:
+                order.append(node)
+                continue
+
+            if node in visited:
+                continue
+
+            visited.add(node)
+            stack.append((node, True))
+            
+            for parent, _ in reversed(node.parents):
+                if parent not in visited:
+                    stack.append((parent, False))
+        return order     
 
     def backward(self) -> None:
         """Fill `.grad` of every node with ∂self/∂node.
@@ -97,4 +135,13 @@ class Var:
         inputs, and push each node's gradient to its parents with the chain rule.
         Remember that a node may be used several times...
         """
-        raise NotImplementedError("TODO: Var.backward")
+        nodes = self.topological_order()
+
+        for node in nodes:
+            node.grad = 0.0
+
+        self.grad = 1.0
+
+        for node in reversed(nodes):
+            for parent, local_derivative in node.parents:
+                parent.grad += local_derivative * node.grad
