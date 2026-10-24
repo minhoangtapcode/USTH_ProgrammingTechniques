@@ -18,7 +18,8 @@ from optlab.losses import PoissonNLL
 from optlab.problems import GLMLoss, linear_regression, logistic_regression
 from optlab.types import Mat, Vec
 
-pytestmark = pytest.mark.day1
+# Marked test by test, not with a module-level `pytestmark`: markers add up, so a
+# day-6 mark on top of a module-wide day-1 one would still be selected by `-m day1`.
 
 
 @pytest.fixture
@@ -33,6 +34,7 @@ def data() -> tuple[Mat, Vec, Vec, Vec]:
     return X, y_linear, y_binary, y_count
 
 
+@pytest.mark.day1
 def test_squared_error_gradient_matches_autodiff(data) -> None:
     X, y, _, _ = data
     n = X.shape[0]
@@ -46,6 +48,7 @@ def test_squared_error_gradient_matches_autodiff(data) -> None:
     )
 
 
+@pytest.mark.day1
 def test_logistic_gradient_matches_autodiff(data) -> None:
     X, _, y, _ = data
     n = X.shape[0]
@@ -60,6 +63,26 @@ def test_logistic_gradient_matches_autodiff(data) -> None:
     )
 
 
+<<<<<<< HEAD
+=======
+# `PoissonNLL` is day 6 (Labwork 6, Exercise 2): under `-m day1` this test could only fail.
+@pytest.mark.day6
+def test_poisson_gradient_matches_autodiff(data) -> None:
+    X, _, _, y = data
+    n = X.shape[0]
+
+    def loss(w: Tensor) -> Tensor:
+        z = X @ w
+        return (exp(z) - y * z).sum() / n
+
+    w = np.array([0.1, -0.3, 0.2, 0.05])
+    np.testing.assert_allclose(
+        GLMLoss(X, y, PoissonNLL()).gradient(w), autodiff_gradient(loss)(w), rtol=1e-12
+    )
+
+
+@pytest.mark.day1
+>>>>>>> e297590e01942b395caa5dab2886a7140b0deeed
 def test_autodiff_is_sharper_than_finite_differences(data) -> None:
     """The claim Lecture 1 Sec. 8 makes, as a test.
 
