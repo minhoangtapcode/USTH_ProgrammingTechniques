@@ -24,6 +24,11 @@ from ..types import Vec
 from .directions import HeavyBall, NewtonDirection, SteepestDescent
 
 
+def _fired_on_convergence(stop: IStoppingCriterion) -> bool:
+    """Return whether the stopping criterion fired for genuine convergence."""
+    return bool(getattr(stop, "means_convergence", False))
+
+
 class DescentOptimizer(IOptimizer):
     """x <- x + alpha*d, where `direction` chooses d and `line_search` chooses alpha.
 
@@ -33,7 +38,12 @@ class DescentOptimizer(IOptimizer):
 
     Catch `LineSearchFailed` and return `converged=False` with the reason in `message`.
     """
+    def _fired_on_convergence(stop: IStoppingCriterion) -> bool:
+        """Return True if the stopping criterion that fired means convergence.
 
+        The loop sees only one `IStoppingCriterion`, but it may be a composite of many.
+        """
+        return getattr(stop, "means_convergence", False)
     def __init__(
         self,
         direction: IDirectionRule,
@@ -48,17 +58,74 @@ class DescentOptimizer(IOptimizer):
 
     def minimize(self, objective: object, x0: Vec) -> OptimizeResult:
         """Requires an `IObjective`."""
-        raise NotImplementedError("[DAY 2] lab 1")
+        if not isinstance(objective, IObjective):
+            raise TypeError(
+                f"DescentOptimizer requires an IObjective, got {type(objective).__name__}"
+            )
 
+        x = np.array(x0, dtype=np.float64).copy()
+        value = objective.value(x)
+        g = objective.gradient(x)
+        grad_norm = float(np.linalg.norm(objective.gradient(x)))
+        iteration = 0
 
+        while True:
+            g = objective.gradient(x)
+            d = self.direction.direction(objective, x, g)
+            try:
+                alpha = self.line_search.step(objective, x, g, d)
+            except LineSearchFailed as err:
+                return OptimizeResult(
+                    x=x,
+                    value=value,
+                    grad_norm=grad_norm,
+                    iterations=iteration,
+                    converged=False,
+                    message=str(err),
+                )
+
+            x = x + alpha * d
+            iteration += 1
+            value = objective.value(x)
+            grad_norm = float(np.linalg.norm(objective.gradient(x)))
+            event = StepEvent(
+                iteration=iteration,
+                x=x,
+                value=value,
+                grad_norm=grad_norm,
+                step_size=alpha,
+            )
+
+            for observer in self.observers:
+                observer.on_step(event)
+
+            if self.stop.should_stop(event):
+                converged = _fired_on_convergence(self.stop)
+                return OptimizeResult(
+                    x=x,
+                    value=value,
+                    grad_norm=grad_norm,
+                    iterations=iteration,
+                    converged=converged,
+                    message="" if converged else "stopping criterion fired",
+                    )
+                
 def gradient_descent(tol: float = 1e-6, max_iter: int = 1000) -> DescentOptimizer:
     """[DAY 2] Steepest descent with an Armijo line search."""
-    raise NotImplementedError("[DAY 2] lab 2")
+    return DescentOptimizer(
+        direction=SteepestDescent(),
+        line_search=Armijo(),
+        stop=AnyOf(GradientNormBelow(tol), MaxIterations(max_iter)),
+    )
 
 
 def momentum(beta: float = 0.9, alpha: float = 0.01, max_iter: int = 1000) -> DescentOptimizer:
     """[DAY 2] Heavy ball with a fixed step."""
-    raise NotImplementedError("[DAY 2] lab 3")
+    return DescentOptimizer(
+        direction=HeavyBall(beta),
+        line_search=FixedStep(alpha),
+        stop=AnyOf(GradientNormBelow(), MaxIterations(max_iter)),
+    )
 
 
 def newton(tol: float = 1e-8, max_iter: int = 100) -> DescentOptimizer:

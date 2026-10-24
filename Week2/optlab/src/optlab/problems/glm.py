@@ -37,9 +37,8 @@ class GLMLoss(IObjective, ITwiceDifferentiable, IBatchObjective):
 
     def gradient(self, w: Vec) -> Vec:
         """[DAY 1] X^T*phi'(Xw, y) / n."""
-        z: Vec = self.X @ w
-        derivative: Vec = self.pointwise.d1(z, self.y)
-        return self.X.T @ derivative / self.X.shape[0]
+        return self.batch_gradient(w, np.arange(self.n_samples))
+        #return self.batch_gradient(w, np.arange(self.n_samples, dtype=np.int))
 
     def hessian(self, w: Vec) -> Mat:
         """[DAY 4] X^T DX / n with D = diag(phi''(Xw, y)).
@@ -54,7 +53,7 @@ class GLMLoss(IObjective, ITwiceDifferentiable, IBatchObjective):
     @property
     def n_samples(self) -> int:
         """[DAY 3] n."""
-        raise NotImplementedError("[DAY 3] lab 1")
+        return self.X.shape[0]
 
     def batch_gradient(self, w: Vec, idx: Index) -> Vec:
         """[DAY 3] The gradient over the subset `idx` only.
@@ -62,8 +61,14 @@ class GLMLoss(IObjective, ITwiceDifferentiable, IBatchObjective):
         Write this so that `gradient` becomes the special case over all indices, rather
         than duplicating the formula in two places.
         """
-        raise NotImplementedError("[DAY 3] lab 1")
-
+       # X_batch = self.X[idx]
+        #y_batch = self.y[idx]
+        #z = X_batch @ w
+        #derivative = self.pointwise.d1(z, y_batch)
+        #return X_batch.T @ derivative / len(idx)
+        Xb = self.X[idx]
+        z = Xb @ w
+        return Xb.T @ self.pointwise.d1(z, self.y[idx]) / idx.size
 
 def linear_regression(X: Mat, y: Vec) -> GLMLoss:
     """[DAY 1] Least-squares regression: the Gaussian MLE."""

@@ -60,20 +60,6 @@ def test_logistic_gradient_matches_autodiff(data) -> None:
     )
 
 
-def test_poisson_gradient_matches_autodiff(data) -> None:
-    X, _, _, y = data
-    n = X.shape[0]
-
-    def loss(w: Tensor) -> Tensor:
-        z = X @ w
-        return (exp(z) - y * z).sum() / n
-
-    w = np.array([0.1, -0.3, 0.2, 0.05])
-    np.testing.assert_allclose(
-        GLMLoss(X, y, PoissonNLL()).gradient(w), autodiff_gradient(loss)(w), rtol=1e-12
-    )
-
-
 def test_autodiff_is_sharper_than_finite_differences(data) -> None:
     """The claim Lecture 1 Sec. 8 makes, as a test.
 

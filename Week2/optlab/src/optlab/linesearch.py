@@ -16,8 +16,7 @@ class FixedStep(ILineSearch):
         self.alpha = alpha
 
     def step(self, objective: IObjective, x: Vec, g: Vec, d: Vec) -> float:
-        raise NotImplementedError("[DAY 2] lab 1")
-
+        return self.alpha
 
 class Armijo(ILineSearch):
     """Backtracking until the sufficient-decrease condition holds:
@@ -45,4 +44,21 @@ class Armijo(ILineSearch):
         self.max_backtracks = max_backtracks
 
     def step(self, objective: IObjective, x: Vec, g: Vec, d: Vec) -> float:
-        raise NotImplementedError("[DAY 2] lab 2")
+        slope = float(g @ d)
+        if slope >= 0.0:
+            raise ValueError(
+                f"not a descent direction: g^T d = {slope:.6g} >= 0"
+                "the direction rule, not the line search, is at fault"
+            )
+        f0 = objective.value(x)
+        alpha = self.alpha0
+        for _ in range(self.max_backtracks):
+            if objective.value(x + alpha * d) <= f0 + self.c1 * alpha * slope:
+                return alpha
+            alpha *= self.rho
+
+        raise LineSearchFailed(
+            f"no step stastisfied the Armijo condition after {self.max_backtracks}"
+              " backtracks (last alpha = {alpha:.3e}, g^t d = {slope:.3e})"
+        )
+        

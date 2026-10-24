@@ -15,8 +15,7 @@ class SteepestDescent(IDirectionRule):
     """
 
     def direction(self, objective: IObjective, x: Vec, g: Vec) -> Vec:
-        raise NotImplementedError("[DAY 2] lab 1")
-
+        return -g
 
 class HeavyBall(IDirectionRule):
     """[DAY 2] d = -g + beta*(previous step). Polyak momentum.
@@ -32,8 +31,10 @@ class HeavyBall(IDirectionRule):
         self._previous: Vec | None = None
 
     def direction(self, objective: IObjective, x: Vec, g: Vec) -> Vec:
-        raise NotImplementedError("[DAY 2] lab 3")
-
+        
+        d = -g if self._previous is None else -g + self.beta * self._previous
+        self._previous = d
+        return d
 
 class NewtonDirection(IDirectionRule):
     """[DAY 4] Solve H d = -g for the Newton direction.

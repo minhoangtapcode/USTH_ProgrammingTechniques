@@ -14,6 +14,10 @@ from ..interfaces import IBatchObjective, IObserver, IOptimizer, IStoppingCriter
 from ..results import OptimizeResult, StepEvent
 from ..types import Vec
 
+#def _batches(rng: np.random.Generator, n: int, batch_sizes: int) -> list[Index]:
+
+ #   if batch_sizes < 1:
+ #       raise
 
 class SGD(IOptimizer):
     """Mini-batch stochastic gradient descent.
@@ -49,7 +53,45 @@ class SGD(IOptimizer):
 
     def minimize(self, objective: object, x0: Vec) -> OptimizeResult:
         """Requires an `IBatchObjective`."""
-        raise NotImplementedError("[DAY 3] lab 2")
+        if not isinstance(objective, IBatchObjective):
+            raise TypeError(
+                f"SGD requires an IBatchObjective, got {type(objective).__name__}"
+            )
+
+        x = np.array(x0, dtype=np.float64).copy()
+        velocity = np.zeros_like(x)
+        n_samples = objective.n_samples
+
+        for epoch in range(self.n_epochs):
+            order = self.rng.permutation(n_samples)
+            step_size = self.lr / (1.0 + self.lr_decay * epoch)
+
+            for start in range(0, n_samples, self.batch_size):
+                idx = order[start:start + self.batch_size]
+                gradient = objective.batch_gradient(x, idx)
+                velocity = self.momentum * velocity - step_size * gradient
+                x = x + velocity
+
+            value = float(objective.value(x))
+            grad_norm = float(np.linalg.norm(objective.gradient(x)))
+            event = StepEvent(
+                iteration=epoch + 1,
+                x=x.copy(),
+                value=value,
+                grad_norm=grad_norm,
+                step_size=step_size,
+            )
+            for observer in self.observers:
+                observer.on_step(event)
+
+        return OptimizeResult(
+            x=x,
+            value=float(objective.value(x)),
+            grad_norm=float(np.linalg.norm(objective.gradient(x))),
+            iterations=self.n_epochs,
+            converged=False,
+            message="epoch budget exhausted",
+        )
 
 
 class Adam(IOptimizer):
@@ -87,4 +129,46 @@ class Adam(IOptimizer):
 
     def minimize(self, objective: object, x0: Vec) -> OptimizeResult:
         """Requires an `IBatchObjective`."""
-        raise NotImplementedError("[DAY 3] lab 3")
+        if not isinstance(objective, IBatchObjective):
+            raise TypeError(
+                f"Adam requires an IBatchObjective, got {type(objective).__name__}"
+            )
+
+        x = np.array(x0, dtype=np.float64).copy()
+        m = np.zeros_like(x)
+        v = np.zeros_like(x)
+        n_samples = objective.n_samples
+        step_count = 0
+
+        for epoch in range(self.n_epochs):
+            order = self.rng.permutation(n_samples)
+            for start in range(0, n_samples, self.batch_size):
+                idx = order[start:start + self.batch_size]
+                gradient = objective.batch_gradient(x, idx)
+                step_count += 1
+                m = self.beta1 * m + (1.0 - self.beta1) * gradient
+                v = self.beta2 * v + (1.0 - self.beta2) * gradient**2
+                m_hat = m / (1.0 - self.beta1**step_count)
+                v_hat = v / (1.0 - self.beta2**step_count)
+                x = x - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+
+            value = float(objective.value(x))
+            grad_norm = float(np.linalg.norm(objective.gradient(x)))
+            event = StepEvent(
+                iteration=epoch + 1,
+                x=x.copy(),
+                value=value,
+                grad_norm=grad_norm,
+                step_size=self.lr,
+            )
+            for observer in self.observers:
+                observer.on_step(event)
+
+        return OptimizeResult(
+            x=x,
+            value=float(objective.value(x)),
+            grad_norm=float(np.linalg.norm(objective.gradient(x))),
+            iterations=self.n_epochs,
+            converged=False,
+            message="epoch budget exhausted",
+        )
